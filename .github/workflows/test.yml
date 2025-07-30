@@ -1,0 +1,35 @@
+name: Test WSL Setup Script
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Validate script syntax
+        run: bash -n wsl-setup.sh
+        
+      - name: Dry-run script
+        run: |
+          # Создаем тестовую среду
+          docker run -it --rm -v $(pwd):/script ubuntu:latest bash -c "
+            apt-get update && apt-get install -y bash curl
+            cd /script
+            echo 'Running in dry-run mode...'
+            bash wsl-setup.sh --dry-run
+          "
+        continue-on-error: true
+        
+      - name: Static analysis
+        uses: reviewdog/action-shellcheck@v1
+        with:
+          pattern: "*.sh"
+          reporter: github-pr-review
+          
