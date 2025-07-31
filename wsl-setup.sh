@@ -121,44 +121,55 @@ grep -qx '. $HOME/.asdf/asdf.sh' ~/.zshrc || {
   echo -e '\n. $HOME/.asdf/asdf.sh' >> ~/.zshrc
   echo -e '. $HOME/.asdf/completions/asdf.bash' >> ~/.zshrc
 }
-. "$HOME/.asdf/asdf.sh"
+source "$HOME/.asdf/asdf.sh"
 
-install_asdf() {
+# Функция для безопасной установки плагинов
+install_asdf_plugin() {
   local plugin=$1 repo=$2
-  asdf plugin-list | grep -qx "$plugin" || asdf plugin-add "$plugin" "$repo"
-  local latest=$(asdf list-all "$plugin" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
-  asdf list "$plugin" | grep -qx "$latest" || asdf install "$plugin" "$latest"
-  asdf global "$plugin" "$latest"
+  echo "Установка плагина: $plugin"
+  if ! asdf plugin-list | grep -qx "$plugin"; then
+    asdf plugin-add "$plugin" "$repo" || return 1
+  fi
+  return 0
 }
+
+# Функция для установки конкретной версии
+install_asdf_version() {
+  local plugin=$1 version=$2
+  echo "Установка $plugin $version"
+  asdf install "$plugin" "$version" || return 1
+  asdf global "$plugin" "$version"
+  return 0
+}
+
 step 6 "Инструменты DevOps через asdf"
-install_asdf terraform https://github.com/asdf-community/asdf-hashicorp.git
-install_asdf kubectl   https://github.com/asdf-community/asdf-kubectl.git
-install_asdf helm      https://github.com/asdf-community/asdf-helm.git
-install_asdf nodejs    https://github.com/asdf-vm/asdf-nodejs.git
-install_asdf python    https://github.com/asdf-vm/asdf-python.git
+plugins=(
+  "terraform:https://github.com/asdf-community/asdf-hashicorp.git"
+  "kubectl:https://github.com/asdf-community/asdf-kubectl.git"
+  "helm:https://github.com/asdf-community/asdf-helm.git"
+  "nodejs:https://github.com/asdf-vm/asdf-nodejs.git"
+  "python:https://github.com/asdf-vm/asdf-python.git"
+)
 
-### 8. Пинning Python версии ###
-step 7 "Pin Python $PYTHON_VERSION"
-asdf install python "$PYTHON_VERSION" || true
-asdf global python   "$PYTHON_VERSION"
+for entry in "${plugins[@]}"; do
+  plugin="${entry%%:*}"
+  repo="${entry##*:}"
+  install_asdf_plugin "$plugin" "$repo"
+done
 
-### 9. Настройка Docker ###
-step 8 "Настройка Docker"
-sudo groupadd docker 2>/dev/null || true
-sudo usermod -aG docker "$USER"
-sudo systemctl enable --now docker || echo "[WARN] Docker не запущен"
+### 8. Установка Python ###
+step 7 "Установка Python $PYTHON_VERSION"
+install_asdf_version python "$PYTHON_VERSION"
 
-### 10. Установка pipx и утилит ###
-step 9 "Установка pipx и Python-утилит"
-command -v pipx >/dev/null || python3 -m pip install --user pipx
-pipx ensurepath
-if ! grep -q '.local/bin' ~/.zshrc; then
-  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-fi
-pipx install poetry        || true
-pipx install pre-commit    || true
-pipx install ansible       || true
-pipx install awscli        || true
+### 9. Установка Terraform ###
+step 8 "Установка Terraform"
+TERRAFORM_VERSION="1.9.5"  # Конкретная стабильная версия
+install_asdf_version terraform "$TERRAFORM_VERSION"
+
+### 10. Установка kubectl и helm ###
+step 9 "Установка kubectl и helm"
+install_asdf_version kubectl "1.30.0"  # Конкретная версия
+install_asdf_version helm "3.15.2"    # Конкретная версия
 
 ### 11. Дополнительные инструменты DevOps ###
 step 10 "Доп. DevOps‑утилиты"
