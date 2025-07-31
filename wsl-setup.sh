@@ -77,7 +77,7 @@ declare -A PLUGINS=(
   [helm]="https://github.com/asdf-community/asdf-helm.git 3.15.2"
   [nodejs]="https://github.com/asdf-vm/asdf-nodejs.git 20.14.0"
   # переключаемся на SSH URL, чтобы не спрашивать пароль
-  [python]="git@github.com:asdf-vm/asdf-python.git $PYTHON_VER"
+  [python]="https://github.com/asdf-community/asdf-python.git $PYTHON_VER"
 )
 for name in "${!PLUGINS[@]}"; do
   IFS=' ' read -r repo ver <<<"${PLUGINS[$name]}"
