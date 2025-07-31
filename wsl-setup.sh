@@ -123,13 +123,22 @@ grep -qx '. $HOME/.asdf/asdf.sh' ~/.zshrc || {
 }
 source "$HOME/.asdf/asdf.sh"
 
-# Функция для безопасной установки плагинов
+# Функция для безопасной установки плагина
 install_asdf_plugin() {
   local plugin=$1 repo=$2
   echo "Установка плагина: $plugin"
-  if ! asdf plugin-list | grep -qx "$plugin"; then
-    asdf plugin-add "$plugin" "$repo" || return 1
+  
+  # Удаляем плагин, если он был установлен с ошибкой
+  if asdf plugin-list | grep -q "$plugin"; then
+    asdf plugin-remove "$plugin" >/dev/null 2>&1
   fi
+  
+  # Устанавливаем заново
+  asdf plugin-add "$plugin" "$repo" || {
+    echo "❌ Ошибка установки плагина $plugin"
+    return 1
+  }
+  
   return 0
 }
 
@@ -137,25 +146,37 @@ install_asdf_plugin() {
 install_asdf_version() {
   local plugin=$1 version=$2
   echo "Установка $plugin $version"
-  asdf install "$plugin" "$version" || return 1
+  
+  # Устанавливаем версию
+  asdf install "$plugin" "$version" || {
+    echo "❌ Ошибка установки $plugin $version"
+    return 1
+  }
+  
+  # Устанавливаем как глобальную
   asdf global "$plugin" "$version"
   return 0
 }
 
 step 6 "Инструменты DevOps через asdf"
-plugins=(
-  "terraform:https://github.com/asdf-community/asdf-hashicorp.git"
-  "kubectl:https://github.com/asdf-community/asdf-kubectl.git"
-  "helm:https://github.com/asdf-community/asdf-helm.git"
-  "nodejs:https://github.com/asdf-vm/asdf-nodejs.git"
-  "python:https://github.com/asdf-vm/asdf-python.git"
-)
 
-for entry in "${plugins[@]}"; do
-  plugin="${entry%%:*}"
-  repo="${entry##*:}"
-  install_asdf_plugin "$plugin" "$repo"
-done
+# Устанавливаем плагины
+install_asdf_plugin terraform https://github.com/asdf-community/asdf-hashicorp.git
+install_asdf_plugin kubectl   https://github.com/asdf-community/asdf-kubectl.git
+install_asdf_plugin helm      https://github.com/asdf-community/asdf-helm.git
+install_asdf_plugin nodejs    https://github.com/asdf-vm/asdf-nodejs.git
+install_asdf_plugin python    https://github.com/asdf-vm/asdf-python.git
+
+# Устанавливаем конкретные версии (стабильные на текущий момент)
+TERRAFORM_VERSION="1.9.5"  # Проверенная стабильная версия
+KUBECTL_VERSION="1.30.0"   # Последняя стабильная версия
+HELM_VERSION="3.15.2"      # Последняя стабильная версия
+NODEJS_VERSION="20.14.0"   # LTS версия
+
+install_asdf_version terraform "$TERRAFORM_VERSION"
+install_asdf_version kubectl   "$KUBECTL_VERSION"
+install_asdf_version helm      "$HELM_VERSION"
+install_asdf_version nodejs    "$NODEJS_VERSION"
 
 ### 8. Установка Python ###
 step 7 "Установка Python $PYTHON_VERSION"
