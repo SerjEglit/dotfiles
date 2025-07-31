@@ -41,25 +41,26 @@ nvm alias default 'lts/*'
 echo "→ Node.js $(node -v)"
 
 ### 3) Terraform через temporary-files ###
-info "Установка Terraform (via temporary-files repo)"
-# Клонируем ваш проверенный репозиторий
-TMP_REPO="$HOME/.tmp/temporary-files"
-rm -rf "$TMP_REPO"
-git clone git@github.com:SerjEglit/temporary-files.git "$TMP_REPO" \
-  || die "Не удалось клонировать temporary-files"
-# Предполагаем, что в репо есть скрипт install-terraform.sh
-if [ -x "$TMP_REPO/install-terraform.sh" ]; then
-  BashBin=$(which bash)
-  # Убираем CRLF и даём права
-  sed -i 's/\r$//' "$TMP_REPO/install-terraform.sh"
-  chmod +x "$TMP_REPO/install-terraform.sh"
-  # Запускаем установку
-  "$TMP_REPO/install-terraform.sh" \
-    || die "Скрипт установки Terraform завершился с ошибкой"
-  echo "→ Terraform from temporary-files: $(terraform version | head -n1)"
-else
-  die "В temporary-files нет install-terraform.sh"
-fi
+### Установка Terraform (надёжно, без зависимостей) ###
+info "Установка Terraform $TF_VER вручную"
+ARCH=$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')
+ZIP="terraform_${TF_VER}_linux_${ARCH}.zip"
+URL="https://releases.hashicorp.com/terraform/${TF_VER}/${ZIP}"
+
+# Создаём временную папку
+TMPDIR=$(mktemp -d)
+# Скачиваем zip
+curl -fsSL "$URL" -o "$TMPDIR/$ZIP" \
+  || die "Не удалось скачать Terraform $TF_VER ($URL)"
+# Распаковываем
+unzip -q "$TMPDIR/$ZIP" -d "$TMPDIR" \
+  || die "Ошибка распаковки Terraform"
+# Устанавливаем бинарник
+sudo mv "$TMPDIR/terraform" /usr/local/bin/
+sudo chmod +x /usr/local/bin/terraform
+rm -rf "$TMPDIR"
+
+echo "→ Terraform $(terraform version | head -n1) установлен"
 
 ### 4) Python + pipx + утилиты ###
 info "Python + pipx + утилиты"
