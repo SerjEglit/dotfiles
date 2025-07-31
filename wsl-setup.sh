@@ -46,19 +46,58 @@ sudo apt install -y \
 
 ### 5. Установка eza ###
 step 3 "Установка eza (Modern exa)"
+install_eza() {
+    local version="$1"
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) ARCH="x86_64";;
+        aarch64) ARCH="aarch64";;
+        *) echo "❌ Неподдерживаемая архитектура: $ARCH" >&2; return 1;;
+    esac
+
+    TMP=$(mktemp -d)
+    URL="https://github.com/eza-community/eza/releases/download/v${version}/eza_${version}-${ARCH}-unknown-linux-gnu.tar.gz"
+    
+    echo "Скачивание eza: $URL"
+    if ! curl -fsSL -o "$TMP/eza.tar.gz" "$URL"; then
+        echo "❌ Ошибка скачивания eza" >&2
+        rm -rf "$TMP"
+        return 1
+    fi
+    
+    echo "Распаковка архива"
+    if ! tar -xzf "$TMP/eza.tar.gz" -C "$TMP"; then
+        echo "❌ Ошибка распаковки архива" >&2
+        rm -rf "$TMP"
+        return 1
+    fi
+    
+    echo "Установка в /usr/local/bin"
+    sudo mv "$TMP/eza" /usr/local/bin/
+    sudo chmod +x /usr/local/bin/eza
+    rm -rf "$TMP"
+    return 0
+}
+
 if ! command -v eza &>/dev/null; then
-  ARCH=$(uname -m)
-  case "$ARCH" in
-    x86_64) ARCH="x86_64";;
-    aarch64) ARCH="aarch64";;
-    *) echo "❌ Unsupported arch: $ARCH" >&2; exit 1;;
-  esac
-  TMP=$(mktemp -d)
-  wget -qO- "https://github.com/eza-community/eza/releases/download/v${EZA_VERSION}/eza_${EZA_VERSION}-${ARCH}-unknown-linux-gnu.tar.gz" \
-    | tar -xz -C "$TMP"
-  sudo mv "$TMP"/eza /usr/local/bin/
-  sudo chmod +x /usr/local/bin/eza
-  rm -rf "$TMP"
+    for attempt in {1..3}; do
+        echo "Попытка установки #$attempt"
+        if install_eza "$EZA_VERSION"; then
+            echo "✅ eza успешно установлена"
+            break
+        fi
+        
+        if [ $attempt -eq 3 ]; then
+            echo "❌ Не удалось установить eza после 3 попыток" >&2
+            echo "Попробуйте установить вручную:"
+            echo "  curl -sL https://raw.githubusercontent.com/eza-community/eza/main/install.sh | bash"
+            exit 1
+        fi
+        
+        sleep 5
+    done
+else
+    echo "✅ eza уже установлена"
 fi
 
 ### 6. Настройка Zsh и Powerlevel10k ###
