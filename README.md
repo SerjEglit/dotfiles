@@ -13,3 +13,10 @@
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/SerjEglit/dotfiles/main/wsl-setup.sh)"
+
+dos2unix wsl-setup.sh
+chmod +x wsl-setup.sh
+Прогон: dos2unix wsl-setup.sh && chmod +x wsl-setup.sh
+Запуск
+./wsl-setup.sh
+
